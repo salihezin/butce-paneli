@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { keyOf } from "@/lib/calc";
-import { isISODate } from "@/lib/dates";
-import { deleteTransactionRow, insertSource, insertTransaction, readDb, updateTransactionRow } from "@/lib/store";
+import { fmtDate, isISODate } from "@/lib/dates";
+import { buildSchedule, validateRecurring } from "@/lib/recurring";
+import { deleteTransactionRow, insertSource, insertTransaction, insertTransactions, readDb, updateTransactionRow } from "@/lib/store";
 import { CURRENCIES, type Db, type Kind } from "@/lib/types";
 
 export type FormState = {
@@ -32,6 +33,7 @@ const errMsg = (e: unknown) => (e instanceof Error ? e.message : "Beklenmeyen bi
 function refresh() {
   revalidatePath("/");
   revalidatePath("/islem/yeni");
+  revalidatePath("/islemler");
   revalidatePath("/kaynak/yeni");
   revalidatePath("/kredi-karti");
 }
@@ -114,4 +116,77 @@ export async function deleteTransaction(fd: FormData): Promise<void> {
   const id = text(fd, "id");
   await deleteTransactionRow(id);
   refresh();
+}
+
+/** Tüm alanları düzenlenebilir işlem güncellemesi (İşlemler sayfası). */
+export async function updateTransactionFull(_prev: FormState, fd: FormData): Promise<FormState> {
+  const id = text(fd, "id");
+  const v = { amount: text(fd, "amount"), from: text(fd, "from"), to: text(fd, "to"), date: text(fd, "date"), currency: text(fd, "currency") || "TL" };
+  const amount = parseAmount(v.amount);
+
+  if (!v.amount || !Number.isFinite(amount) || amount <= 0) return { error: "Tutarı 0'dan büyük bir sayı olarak gir." };
+  if (!isISODate(v.date)) return { error: "Tarih geçersiz." };
+  if (!(CURRENCIES as readonly string[]).includes(v.currency)) return { error: "Para birimi geçersiz." };
+  if (!v.from && !v.to) return { error: "Nereden ya da Nereye alanlarından en az biri dolu olmalı." };
+  if (v.from && v.to && keyOf(v.from) === keyOf(v.to)) return { error: "Nereden ile Nereye aynı olamaz." };
+
+  try {
+    const db = await readDb();
+    const found = await updateTransactionRow(id, {
+      amount: Math.round(amount * 100) / 100,
+      date: v.date,
+      currency: v.currency,
+      from: canonical(db, v.from),
+      to: canonical(db, v.to),
+    });
+    if (!found) return { error: "Kayıt bulunamadı." };
+  } catch (e) {
+    return { error: errMsg(e) };
+  }
+  refresh();
+  return { ok: true, message: "Kaydedildi", nonce: Date.now() };
+}
+
+/** Aylık tekrarlayan ödeme: tek formdan çok sayıda satır üretir. */
+export async function addRecurring(_prev: FormState, fd: FormData): Promise<FormState> {
+  const values = {
+    from: text(fd, "from"),
+    to: text(fd, "to"),
+    amount: text(fd, "amount"),
+    step: text(fd, "step"),
+    stepFrom: text(fd, "stepFrom"),
+    count: text(fd, "count"),
+    date: text(fd, "date"),
+    currency: text(fd, "currency") || "TL",
+  };
+  const input = {
+    amount: parseAmount(values.amount),
+    step: values.step ? parseAmount(values.step) : 0,
+    stepFrom: values.stepFrom ? Number(values.stepFrom) : 2,
+    count: Number(values.count),
+    firstDate: values.date,
+  };
+
+  if (!(CURRENCIES as readonly string[]).includes(values.currency)) return { error: "Para birimi geçersiz.", values };
+  if (!values.from && !values.to) return { error: "Nereden ya da Nereye alanlarından en az biri dolu olmalı.", values };
+  if (values.from && values.to && keyOf(values.from) === keyOf(values.to)) return { error: "Nereden ile Nereye aynı olamaz.", values };
+  const problem = validateRecurring(input);
+  if (problem) return { error: problem, values };
+
+  const schedule = buildSchedule(input);
+  try {
+    const db = await readDb();
+    const from = canonical(db, values.from);
+    const to = canonical(db, values.to);
+    await insertTransactions(schedule.map((s) => ({ amount: s.amount, from, to, date: s.date, currency: values.currency })));
+  } catch (e) {
+    return { error: errMsg(e), values };
+  }
+  refresh();
+  return {
+    ok: true,
+    message: `${schedule.length} ödeme eklendi (${fmtDate(schedule[0].date)} – ${fmtDate(schedule[schedule.length - 1].date)}).`,
+    values: { currency: values.currency, date: values.date },
+    nonce: Date.now(),
+  };
 }

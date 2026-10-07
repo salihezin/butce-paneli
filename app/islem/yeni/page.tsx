@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Empty, Section } from "@/components/Cards";
+import RecurringForm from "@/components/RecurringForm";
 import { TransactionForm } from "@/components/Forms";
 import { fmtDate, todayISO } from "@/lib/dates";
 import { money } from "@/lib/format";
@@ -20,6 +22,10 @@ export default async function NewTransaction() {
     <>
       <Section title="İşlem ekle" hint="Excel'deki satırlarla aynı alanlar. İsimler önerilir, listede olmayan bir isim de yazabilirsin.">
         <TransactionForm names={names} defaultDate={todayISO()} />
+      </Section>
+
+      <Section title="Tekrarlayan ödeme ekle" hint="Kredi, aidat, taksit gibi aylık ödemeleri tek seferde üretir. Kaydetmeden önce oluşacak satırları görürsün.">
+        <RecurringForm names={names} defaultDate={todayISO()} />
       </Section>
 
       <Section title="Son eklenenler">
@@ -49,6 +55,9 @@ export default async function NewTransaction() {
           </table>
         </div>
         )}
+        <p className="mt-3 text-sm">
+          <Link href="/islemler" className="font-medium text-cini-koyu underline underline-offset-2">Tüm işlemleri gör, düzenle ya da sil</Link>
+        </p>
       </Section>
     </>
   );

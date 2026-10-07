@@ -13,7 +13,7 @@ export default async function Home() {
     <>
       <p className="mb-6 text-sm text-sessiz">Bugün {fmtDate(today)}</p>
 
-      <Section title="Anlık neyimiz var?">
+      <Section title="Anlık neyim var?" hint="Bugüne kadar girilen işlemlere göre, bakiyesi olan hesaplar.">
         {d.assets.length === 0 ? (
           <Empty>Şu an bakiyesi olan hesap yok. İşlem ekleyince burada görünür.</Empty>
         ) : (

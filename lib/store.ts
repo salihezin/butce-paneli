@@ -65,19 +65,25 @@ async function householdId(supabase: SupabaseClient): Promise<string> {
   return data.household_id as string;
 }
 
-export async function insertTransaction(t: Omit<Tx, "id" | "createdAt">, c?: SupabaseClient): Promise<void> {
+export async function insertTransactions(list: Omit<Tx, "id" | "createdAt">[], c?: SupabaseClient): Promise<void> {
+  if (list.length === 0) return;
   const supabase = await client(c);
   const household_id = await householdId(supabase);
-  const { error } = await supabase.from("transactions").insert({
-    household_id,
-    amount: t.amount,
-    from_name: t.from,
-    to_name: t.to,
-    date: t.date,
-    currency: t.currency,
-  });
+  // Tek istekte eklenir: ya hepsi kaydolur ya hiçbiri.
+  const { error } = await supabase.from("transactions").insert(
+    list.map((t) => ({
+      household_id,
+      amount: t.amount,
+      from_name: t.from,
+      to_name: t.to,
+      date: t.date,
+      currency: t.currency,
+    })),
+  );
   if (error) fail("İşlem kaydedilemedi", error.message);
 }
+
+export const insertTransaction = (t: Omit<Tx, "id" | "createdAt">, c?: SupabaseClient) => insertTransactions([t], c);
 
 /** "duplicate": aynı isimde kaynak zaten var. */
 export async function insertSource(s: Omit<Source, "id">, c?: SupabaseClient): Promise<"ok" | "duplicate"> {
@@ -89,10 +95,18 @@ export async function insertSource(s: Omit<Source, "id">, c?: SupabaseClient): P
   return "ok";
 }
 
+export type TxPatch = { amount?: number; date?: string; currency?: string; from?: string | null; to?: string | null };
+
 /** false: kayıt bulunamadı (silinmiş ya da erişim yok). */
-export async function updateTransactionRow(id: string, patch: { amount: number; date: string }, c?: SupabaseClient): Promise<boolean> {
+export async function updateTransactionRow(id: string, patch: TxPatch, c?: SupabaseClient): Promise<boolean> {
   const supabase = await client(c);
-  const { data, error } = await supabase.from("transactions").update(patch).eq("id", id).select("id");
+  const row: Record<string, unknown> = {};
+  if (patch.amount !== undefined) row.amount = patch.amount;
+  if (patch.date !== undefined) row.date = patch.date;
+  if (patch.currency !== undefined) row.currency = patch.currency;
+  if (patch.from !== undefined) row.from_name = patch.from;
+  if (patch.to !== undefined) row.to_name = patch.to;
+  const { data, error } = await supabase.from("transactions").update(row).eq("id", id).select("id");
   if (error) fail("Güncellenemedi", error.message);
   return (data?.length ?? 0) > 0;
 }

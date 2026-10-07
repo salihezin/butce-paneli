@@ -10,6 +10,12 @@
 4. `.env.local.example` dosyasını `.env.local` olarak kopyala; Connect penceresindeki URL ve publishable key'i yapıştır.
 5. `npm install && npm run dev` → http://localhost:3000 (giriş sayfasına yönlenir)
 
+## Sayfalar
+- **Panel** (`/`): kartlar.
+- **İşlemler** (`/islemler`): arama, kaynak/zaman/tarih filtresi; satırı yerinde düzenle ya da sil. Varsayılan görünüm bugüne kadarki işlemler, en yeni üstte.
+- **İşlem ekle** (`/islem/yeni`): tek işlem + **tekrarlayan ödeme** (aylık, en fazla 360 satır; kaydetmeden önce önizleme). Tutar zamanla artıyorsa "her ödemede artış" ve "artış kaçıncı ödemeden başlasın" doldurulur. Satırlar tek istekte eklenir: ya hepsi kaydolur ya hiçbiri.
+- **Kaynak ekle**, **Vakıfbank kartı**: önceki gibi.
+
 ## Yayına alma
 Aynı iki ortam değişkenini Vercel'e gir. Supabase > Authentication > URL Configuration'a Vercel adresini ekle.
 

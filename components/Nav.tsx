@@ -6,6 +6,7 @@ import { signOut } from "@/app/auth-actions";
 
 const LINKS = [
   { href: "/", label: "Panel" },
+  { href: "/islemler", label: "İşlemler" },
   { href: "/islem/yeni", label: "İşlem ekle" },
   { href: "/kaynak/yeni", label: "Kaynak ekle" },
   { href: "/kredi-karti", label: "Vakıfbank kartı" },
@@ -22,7 +23,7 @@ export default function Nav() {
           <>
             <nav className="flex flex-wrap gap-1" aria-label="Ana menü">
               {LINKS.map((l) => {
-                const active = l.href === "/" ? path === "/" : path.startsWith(l.href);
+                const active = l.href === "/" ? path === "/" : path === l.href || path.startsWith(l.href + "/");
                 return (
                   <Link
                     key={l.href}
