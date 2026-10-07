@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { keyOf } from "@/lib/calc";
-import { fmtDate, isISODate } from "@/lib/dates";
+import { fmtDate, isISODate, todayISO } from "@/lib/dates";
 import { buildSchedule, validateRecurring } from "@/lib/recurring";
-import { deleteTransactionRow, insertSource, insertTransaction, insertTransactions, readDb, updateTransactionRow } from "@/lib/store";
-import { CURRENCIES, type Db, type Kind } from "@/lib/types";
+import { deleteTransactionRow, insertSource, insertTransaction, insertTransactions, payObligations, readDb, settleTransactions, updateTransactionRow } from "@/lib/store";
+import { CURRENCIES, NO_ACCOUNT, type Db, type Kind } from "@/lib/types";
 
 export type FormState = {
   ok?: boolean;
@@ -138,6 +138,7 @@ export async function updateTransactionFull(_prev: FormState, fd: FormData): Pro
       currency: v.currency,
       from: canonical(db, v.from),
       to: canonical(db, v.to),
+      settled: fd.get("settled") === "on",
     });
     if (!found) return { error: "Kayıt bulunamadı." };
   } catch (e) {
@@ -189,4 +190,34 @@ export async function addRecurring(_prev: FormState, fd: FormData): Promise<Form
     values: { currency: values.currency, date: values.date },
     nonce: Date.now(),
   };
+}
+
+/** Yaklaşan borç kartındaki "Ödendi": hesaptan ödemeyi kaydeder, kartın satırlarını kapatır. */
+export async function markPaid(_prev: FormState, fd: FormData): Promise<FormState> {
+  const ids = fd.getAll("id").map(String).filter(Boolean);
+  const payee = text(fd, "payee");
+  const account = text(fd, "account");
+  const currency = text(fd, "currency");
+  const amount = parseAmount(text(fd, "amount"));
+
+  if (ids.length === 0 || !payee) return { error: "Kart bilgisi eksik, sayfayı yenile." };
+  if (!account) return { error: "Hangi hesaptan ödendiğini seç." };
+  if (!Number.isFinite(amount) || amount <= 0) return { error: "Tutar geçersiz." };
+
+  try {
+    if (account === NO_ACCOUNT) {
+      const n = await settleTransactions(ids);
+      if (n === 0) return { error: "Kayıt bulunamadı, sayfayı yenile." };
+    } else {
+      const db = await readDb();
+      const acc = db.sources.find((x) => x.kind === "hesap" && keyOf(x.name) === keyOf(account));
+      if (!acc) return { error: "Hesap bulunamadı." };
+      if (acc.currency !== currency) return { error: `${acc.name} ${acc.currency} hesabı; bu ödeme ${currency} cinsinden.` };
+      await payObligations({ ids, account: acc.name, payee, amount: Math.round(amount * 100) / 100, currency, date: todayISO() });
+    }
+  } catch (e) {
+    return { error: errMsg(e) };
+  }
+  refresh();
+  return { ok: true, message: "Ödendi olarak kaydedildi", nonce: Date.now() };
 }

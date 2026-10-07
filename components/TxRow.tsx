@@ -20,7 +20,8 @@ export default function TxRow({ tx, future }: { tx: Tx; future: boolean }) {
       <li className="grid items-center gap-x-4 gap-y-1 border-t border-cizgi px-4 py-3 first:border-t-0 sm:grid-cols-[10rem_minmax(0,1fr)_auto_auto]">
         <span className="text-sm text-sessiz">
           {fmtDate(tx.date)}
-          {future && <span className="ml-2 rounded bg-kehribar-acik px-1.5 py-0.5 text-xs font-medium text-kehribar">ileri tarihli</span>}
+          {future && !tx.settled && <span className="ml-2 rounded bg-kehribar-acik px-1.5 py-0.5 text-xs font-medium text-kehribar">ileri tarihli</span>}
+          {tx.settled && <span className="ml-2 rounded bg-cini-acik px-1.5 py-0.5 text-xs font-medium text-cini-koyu">ödendi</span>}
         </span>
         <span className="min-w-0 truncate">
           {tx.from ?? "—"} <span aria-hidden className="text-sessiz">→</span> {tx.to ?? "—"}
@@ -61,6 +62,12 @@ export default function TxRow({ tx, future }: { tx: Tx; future: boolean }) {
             ))}
           </select>
         </div>
+        {!tx.to && tx.from && (
+          <label className="flex items-center gap-2 text-sm sm:col-span-6">
+            <input type="checkbox" name="settled" defaultChecked={!!tx.settled} className="h-4 w-4 accent-[#0E7C86]" />
+            Ödendi olarak işaretli (yaklaşan borçlarda görünmez)
+          </label>
+        )}
         <div className="flex items-end gap-2 sm:col-span-3">
           <button className="dugme" disabled={pending}>{pending ? "Kaydediliyor…" : "Kaydet"}</button>
           <button type="button" className="dugme-ikincil" onClick={() => setEditing(false)}>Vazgeç</button>

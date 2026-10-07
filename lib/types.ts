@@ -11,6 +11,7 @@ export type Tx = {
   date: string; // YYYY-MM-DD
   currency: string;
   createdAt?: string; // sadece uygulamadan girilenlerde dolu
+  settled?: boolean; // ileri tarihli borç satırı "ödendi" olarak kapatıldı
 };
 
 export type Db = { sources: Source[]; transactions: Tx[] };
@@ -25,3 +26,6 @@ export const KIND_LABEL: Record<Kind, string> = {
 
 /** Vakıfbank kredi kartı kayıtlarını bulmak için isim öneki (Nereden sütunu). */
 export const VB_KK_PREFIX = "VAKIFBANK KREDİ KARTI";
+
+/** "Ödendi" panelinde: hesaptan düşmeden sadece kartı kapat. */
+export const NO_ACCOUNT = "__yok__";

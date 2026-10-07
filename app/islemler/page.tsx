@@ -35,6 +35,12 @@ export default async function Transactions({ searchParams }: { searchParams: Pro
     return s ? `/islemler?${s}` : "/islemler";
   };
 
+  const exportQs = new URLSearchParams({ filtre: "1", zaman: f.zaman });
+  if (f.q) exportQs.set("q", f.q);
+  if (f.kaynak) exportQs.set("kaynak", f.kaynak);
+  if (f.bas) exportQs.set("bas", f.bas);
+  if (f.bit) exportQs.set("bit", f.bit);
+
   return (
     <Section title="İşlemler" hint="Arayıp filtrele, bir satırı düzenle ya da sil. Panel bu değişikliklere göre hemen güncellenir.">
       <datalist id="kaynaklar">
@@ -79,9 +85,15 @@ export default async function Transactions({ searchParams }: { searchParams: Pro
         </div>
       </form>
 
-      <p className="mb-2 text-sm text-sessiz">
-        {rows.length} işlem{pages > 1 ? ` · sayfa ${page}/${pages}` : ""}
-      </p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm text-sessiz">
+        <p>
+          {rows.length} işlem{pages > 1 ? ` · sayfa ${page}/${pages}` : ""}
+        </p>
+        <p className="flex gap-4">
+          <a href={`/api/export?${exportQs}`} className="font-medium text-cini-koyu underline underline-offset-2">Bu listeyi CSV indir</a>
+          <a href="/api/export" className="font-medium text-cini-koyu underline underline-offset-2">Hepsini indir ({db.transactions.length})</a>
+        </p>
+      </div>
 
       {visible.length === 0 ? (
         <Empty>Bu filtreyle eşleşen işlem yok.</Empty>

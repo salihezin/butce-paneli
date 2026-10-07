@@ -16,7 +16,7 @@ export default async function NewSource() {
         <SourceForm />
       </Section>
 
-      <Section title="Kayıtlı kaynaklar">
+      <Section title="Kayıtlı kaynaklar" hint="Bakiyeler bugüne kadar girilen işlemlere göre.">
         <div className="kart overflow-x-auto">
           <table className="w-full min-w-[30rem] text-left text-sm">
             <thead className="border-b border-cizgi text-sessiz">
@@ -37,6 +37,9 @@ export default async function NewSource() {
             </tbody>
           </table>
         </div>
+        <p className="mt-3 text-sm">
+          <a href="/api/export?tur=kaynaklar" className="font-medium text-cini-koyu underline underline-offset-2">Kaynakları CSV indir</a>
+        </p>
       </Section>
     </>
   );

@@ -15,6 +15,7 @@ type TxRow = {
   date: string;
   currency: string;
   created_at: string;
+  settled: boolean;
 };
 
 const fail = (what: string, message: string): never => {
@@ -35,7 +36,7 @@ export async function readDb(c?: SupabaseClient): Promise<Db> {
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from("transactions")
-      .select("id, amount, from_name, to_name, date, currency, created_at")
+      .select("id, amount, from_name, to_name, date, currency, created_at, settled")
       .order("date")
       .order("id")
       .range(from, from + PAGE - 1);
@@ -54,6 +55,7 @@ export async function readDb(c?: SupabaseClient): Promise<Db> {
       date: r.date,
       currency: r.currency,
       createdAt: r.created_at > IMPORTED_BEFORE ? r.created_at : undefined,
+      settled: r.settled,
     })),
   };
 }
@@ -95,7 +97,7 @@ export async function insertSource(s: Omit<Source, "id">, c?: SupabaseClient): P
   return "ok";
 }
 
-export type TxPatch = { amount?: number; date?: string; currency?: string; from?: string | null; to?: string | null };
+export type TxPatch = { amount?: number; date?: string; currency?: string; from?: string | null; to?: string | null; settled?: boolean };
 
 /** false: kayıt bulunamadı (silinmiş ya da erişim yok). */
 export async function updateTransactionRow(id: string, patch: TxPatch, c?: SupabaseClient): Promise<boolean> {
@@ -106,6 +108,7 @@ export async function updateTransactionRow(id: string, patch: TxPatch, c?: Supab
   if (patch.currency !== undefined) row.currency = patch.currency;
   if (patch.from !== undefined) row.from_name = patch.from;
   if (patch.to !== undefined) row.to_name = patch.to;
+  if (patch.settled !== undefined) row.settled = patch.settled;
   const { data, error } = await supabase.from("transactions").update(row).eq("id", id).select("id");
   if (error) fail("Güncellenemedi", error.message);
   return (data?.length ?? 0) > 0;
@@ -115,4 +118,29 @@ export async function deleteTransactionRow(id: string, c?: SupabaseClient): Prom
   const supabase = await client(c);
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) fail("Silinemedi", error.message);
+}
+
+/** Hesaptan ödemeyi kaydeder ve borç satırlarını kapatır (tek işlem, SQL fonksiyonu). */
+export async function payObligations(
+  a: { ids: string[]; account: string; payee: string; amount: number; currency: string; date: string },
+  c?: SupabaseClient,
+): Promise<void> {
+  const supabase = await client(c);
+  const { error } = await supabase.rpc("pay_obligations", {
+    p_ids: a.ids,
+    p_account: a.account,
+    p_payee: a.payee,
+    p_amount: a.amount,
+    p_currency: a.currency,
+    p_date: a.date,
+  });
+  if (error) fail("Ödeme kaydedilemedi", error.message);
+}
+
+/** Hesaptan düşmeden sadece borç satırlarını "ödendi" yapar. */
+export async function settleTransactions(ids: string[], c?: SupabaseClient): Promise<number> {
+  const supabase = await client(c);
+  const { data, error } = await supabase.from("transactions").update({ settled: true }).in("id", ids).select("id");
+  if (error) fail("Güncellenemedi", error.message);
+  return data?.length ?? 0;
 }

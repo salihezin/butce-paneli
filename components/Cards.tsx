@@ -1,6 +1,7 @@
 import { daysLeftLabel, fmtDate, fmtDay, fmtMonthShort, fmtMonthYear } from "@/lib/dates";
 import { money } from "@/lib/format";
-import type { DueItem, StandardItem } from "@/lib/calc";
+import type { DueItem, StandardItem, Summary as SummaryData } from "@/lib/calc";
+import PayPanel from "./PayPanel";
 
 export function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -31,7 +32,7 @@ export function BalanceCard({ name, amount, currency, tone = "normal" }: { name:
 }
 
 /** Tarih "koçan"ı: yaklaşan ödeme ve alacak kartlarının ortak yüzü. */
-export function DueCard({ item, tone }: { item: DueItem; tone: "borc" | "alacak" }) {
+export function DueCard({ item, tone, accounts }: { item: DueItem; tone: "borc" | "alacak"; accounts?: { name: string; currency: string }[] }) {
   const stub = tone === "borc" ? "bg-kehribar-acik text-kehribar" : "bg-cini-acik text-cini-koyu";
   return (
     <div className="kart flex overflow-hidden">
@@ -46,6 +47,9 @@ export function DueCard({ item, tone }: { item: DueItem; tone: "borc" | "alacak"
           {daysLeftLabel(item.daysLeft)}
           {item.count > 1 ? `, ${item.count} kalem` : ""}
         </p>
+        {tone === "borc" && accounts && (
+          <PayPanel ids={item.ids} payee={item.name} amount={item.total} currency={item.currency} accounts={accounts} />
+        )}
       </div>
     </div>
   );
@@ -72,5 +76,24 @@ export function StandardCard({ item }: { item: StandardItem }) {
         )}
       </dl>
     </div>
+  );
+}
+
+/** "Bir ayda ödenecek / hesaplarında var / geriye kalan" özeti. TL dışı tutarlar çevrilmeden ayrıca yazılır. */
+export function SummaryBar({ s }: { s: SummaryData }) {
+  const enough = s.diffTL >= 0;
+  const others = s.otherDue.map((o) => money(o.total, o.currency)).join(" + ");
+  return (
+    <p className={`mb-4 rounded-md border px-4 py-3 text-[15px] ${enough ? "border-cini/30 bg-cini-acik/60" : "border-nar/40 bg-nar-acik/60"}`}>
+      Bir ay içinde ödenecek <strong className="num">{money(s.dueTL)}</strong>
+      {others && <> (ayrıca <span className="num">{others}</span>)</>}. Hesaplarında <span className="num">{money(s.availableTL)}</span> var;{" "}
+      {enough ? (
+        <>ödemelerden sonra <strong className="num text-cini-koyu">{money(s.diffTL)}</strong> kalır.</>
+      ) : (
+        <>
+          <strong className="num text-nar">{money(-s.diffTL)}</strong> eksik.
+        </>
+      )}
+    </p>
   );
 }

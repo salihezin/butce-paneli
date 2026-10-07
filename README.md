@@ -7,14 +7,21 @@
    1. `supabase/schema.sql`: tablolar ve RLS
    2. `supabase/bootstrap.sql`: önce içindeki e-postaları kendi e-postalarınla değiştir
    3. `supabase/seed.sql`: Excel verisi (tek seferlik; ikinci çalıştırmada hata verir)
-4. `.env.local.example` dosyasını `.env.local` olarak kopyala; Connect penceresindeki URL ve publishable key'i yapıştır.
-5. `npm install && npm run dev` → http://localhost:3000 (giriş sayfasına yönlenir)
+   4. `supabase/002_odendi.sql`: "Ödendi" özelliği için `settled` sütunu ve `pay_obligations` fonksiyonu. **Mevcut kurulumda uygulamanın yeni sürümünü açmadan önce çalıştır.**
+5. `.env.local.example` dosyasını `.env.local` olarak kopyala; Connect penceresindeki URL ve publishable key'i yapıştır.
+6. `npm install && npm run dev` → http://localhost:3000 (giriş sayfasına yönlenir)
 
 ## Sayfalar
 - **Panel** (`/`): kartlar.
 - **İşlemler** (`/islemler`): arama, kaynak/zaman/tarih filtresi; satırı yerinde düzenle ya da sil. Varsayılan görünüm bugüne kadarki işlemler, en yeni üstte.
 - **İşlem ekle** (`/islem/yeni`): tek işlem + **tekrarlayan ödeme** (aylık, en fazla 360 satır; kaydetmeden önce önizleme). Tutar zamanla artıyorsa "her ödemede artış" ve "artış kaçıncı ödemeden başlasın" doldurulur. Satırlar tek istekte eklenir: ya hepsi kaydolur ya hiçbiri.
 - **Kaynak ekle**, **Vakıfbank kartı**: önceki gibi.
+
+## Diğer özellikler
+- **Özet satırı:** Panelde yaklaşan borçların üstünde "ödenecek / hesaplarında var / kalır ya da eksik". TL hesapların net toplamıyla TL borçlar karşılaştırılır; başka para birimleri çevrilmeden ayrıca yazılır.
+- **Ödendi:** Yaklaşan borç kartında hesabı seçince ödeme (hesap → kurum, bugünün tarihiyle) kaydolur ve kartın satırları kapanır. "Hesaptan düşme, sadece kapat" seçeneği ödemeyi hesaplara yansıtmaz. Yanlışlıkla kapattıysan İşlemler sayfasında satırı düzenleyip "Ödendi" kutusunu kaldır; ödeme satırını da oradan silebilirsin.
+- **CSV:** İşlemler sayfasında "Bu listeyi indir" (filtreli) ve "Hepsini indir"; Kaynak ekle sayfasında kaynak bakiyeleri. Ayraç `;`, ondalık `,`, UTF-8 BOM'lu: Türkçe Excel'de doğrudan açılır.
+- **Telefona ekleme (PWA):** Android Chrome'da menü → "Ana ekrana ekle / Uygulamayı yükle"; iPhone Safari'de Paylaş → "Ana Ekrana Ekle". Çevrimdışı çalışmaz, veri Supabase'te.
 
 ## Yayına alma
 Aynı iki ortam değişkenini Vercel'e gir. Supabase > Authentication > URL Configuration'a Vercel adresini ekle.

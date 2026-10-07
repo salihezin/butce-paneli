@@ -1,4 +1,4 @@
-import { BalanceCard, DueCard, Empty, Grid, Section, StandardCard } from "@/components/Cards";
+import { BalanceCard, DueCard, Empty, Grid, Section, StandardCard, SummaryBar } from "@/components/Cards";
 import { dashboard } from "@/lib/calc";
 import { fmtDate, todayISO } from "@/lib/dates";
 import { readDb } from "@/lib/store";
@@ -41,11 +41,14 @@ export default async function Home() {
         {d.upcoming.length === 0 ? (
           <Empty>Önümüzdeki bir ay içinde vadesi gelen borç yok.</Empty>
         ) : (
-          <Grid>
-            {d.upcoming.map((i) => (
-              <DueCard key={i.key} item={i} tone="borc" />
-            ))}
-          </Grid>
+          <>
+            {d.summary && <SummaryBar s={d.summary} />}
+            <Grid>
+              {d.upcoming.map((i) => (
+                <DueCard key={i.key} item={i} tone="borc" accounts={d.payAccounts} />
+              ))}
+            </Grid>
+          </>
         )}
       </Section>
 

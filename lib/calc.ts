@@ -28,6 +28,7 @@ export type DueItem = {
   total: number;
   count: number;
   daysLeft: number;
+  ids: string[]; // karttaki satırlar ("ödendi" için)
 };
 
 /** Aynı kişi/kurum + aynı gün + aynı para birimi tek kartta toplanır. */
@@ -36,9 +37,10 @@ function groupByDate(txs: Tx[], pick: (t: Tx) => string, today: string): DueItem
   for (const t of txs) {
     const name = pick(t);
     const k = `${keyOf(name)}|${t.date}|${t.currency}`;
-    const cur = map.get(k) ?? { key: k, name, date: t.date, currency: t.currency, total: 0, count: 0, daysLeft: daysBetween(today, t.date), c: 0 };
+    const cur = map.get(k) ?? { key: k, name, date: t.date, currency: t.currency, total: 0, count: 0, daysLeft: daysBetween(today, t.date), ids: [], c: 0 };
     cur.c += cents(t.amount);
     cur.count += 1;
+    cur.ids.push(t.id);
     cur.total = cur.c / 100;
     map.set(k, cur);
   }
@@ -80,6 +82,29 @@ function groupByPayee(txs: Tx[]): StandardItem[] {
     .sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.name.localeCompare(b.name, "tr"));
 }
 
+export type Summary = {
+  dueTL: number;
+  otherDue: { currency: string; total: number }[]; // TL dışı: çevrilmez, ayrıca listelenir
+  availableTL: number;
+  diffTL: number; // available − due (eksi = yetmiyor)
+};
+
+/** Önümüzdeki bir ayda ödenecekler ile TL hesapların net toplamı (ekside kalan hesap toplamdan düşer). */
+export function summarize(upcoming: DueItem[], accounts: { currency: string; balance: number }[]): Summary | null {
+  if (upcoming.length === 0) return null;
+  const sum = (xs: number[]) => xs.reduce((s, x) => s + cents(x), 0) / 100;
+  const dueTL = sum(upcoming.filter((u) => u.currency === "TL").map((u) => u.total));
+  const others = new Map<string, number[]>();
+  for (const u of upcoming) if (u.currency !== "TL") others.set(u.currency, [...(others.get(u.currency) ?? []), u.total]);
+  const availableTL = sum(accounts.filter((a) => a.currency === "TL").map((a) => a.balance));
+  return {
+    dueTL,
+    otherDue: [...others.entries()].map(([currency, totals]) => ({ currency, total: sum(totals) })),
+    availableTL,
+    diffTL: Math.round((availableTL - dueTL) * 100) / 100,
+  };
+}
+
 export function dashboard(db: Db, today: string) {
   const bal = balances(db, today);
   const kindOf = new Map(db.sources.map((s) => [keyOf(s.name), s.kind]));
@@ -88,17 +113,22 @@ export function dashboard(db: Db, today: string) {
   const windowEnd = addMonths(today, 1);
   const future = db.transactions.filter((t) => t.date > today);
 
-  // Ödeme yükümlülüğü: ileri tarihli, "Nereden" dolu, "Nereye" boş ve Nereden bir hesabımız değil.
-  const obligations = future.filter((t) => t.from && !t.to && !isAccount(t.from));
+  // Ödeme yükümlülüğü: ileri tarihli, "Nereden" dolu, "Nereye" boş, Nereden bir hesabımız değil ve henüz "ödendi" işaretlenmemiş.
+  const obligations = future.filter((t) => t.from && !t.to && !isAccount(t.from) && !t.settled);
   // Alacak: ileri tarihli, "Nereye" dolu (hesabımız değil), "Nereden" boş.
   const incoming = future.filter((t) => t.to && !t.from && !isAccount(t.to));
+
+  const assets = bal.filter((s) => s.kind === "hesap" && s.balance > 0).sort((a, b) => b.balance - a.balance);
+  const upcoming = groupByDate(obligations.filter((t) => t.date <= windowEnd), (t) => t.from!, today);
 
   return {
     today,
     windowEnd,
-    assets: bal.filter((s) => s.kind === "hesap" && s.balance > 0).sort((a, b) => b.balance - a.balance),
+    assets,
+    summary: summarize(upcoming, bal.filter((s) => s.kind === "hesap")),
+    payAccounts: bal.filter((s) => s.kind === "hesap").map((s) => ({ name: s.name, currency: s.currency })),
     debts: bal.filter((s) => s.kind !== "hesap" && s.balance < 0).map((s) => ({ ...s, owed: -s.balance })),
-    upcoming: groupByDate(obligations.filter((t) => t.date <= windowEnd), (t) => t.from!, today),
+    upcoming,
     standard: groupByPayee(obligations.filter((t) => t.date > windowEnd)),
     receivables: groupByDate(incoming, (t) => t.to!, today),
   };
