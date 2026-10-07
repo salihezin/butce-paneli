@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { background: #EDF0EE; color: #14213D; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid #0E7C86; outline-offset: 2px; }
+}
+
+@layer components {
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .kart { @apply rounded-kart border border-cizgi bg-kagit; }
+  .alan {
+    @apply w-full rounded-md border border-cizgi bg-white px-3 py-2 text-[15px] text-murekkep
+      placeholder:text-sessiz/60 focus:border-cini focus:outline-none focus:ring-1 focus:ring-cini;
+  }
+  .etiket { @apply mb-1 block text-sm font-medium text-murekkep; }
+  .dugme {
+    @apply inline-flex items-center justify-center rounded-md bg-murekkep px-4 py-2 text-[15px] font-medium text-white
+      transition-colors hover:bg-cini-koyu disabled:opacity-60;
+  }
+  .dugme-ikincil {
+    @apply inline-flex items-center justify-center rounded-md border border-cizgi bg-white px-3 py-2 text-sm font-medium
+      text-murekkep hover:border-murekkep disabled:opacity-60;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
