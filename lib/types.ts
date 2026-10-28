@@ -26,6 +26,18 @@ export const KIND_LABEL: Record<Kind, string> = {
 
 /** Vakıfbank kredi kartı kayıtlarını bulmak için isim öneki (Nereden sütunu). */
 export const VB_KK_PREFIX = "VAKIFBANK KREDİ KARTI";
-
+export const ALBARAKA_KK_PREFIX = "ALBARAKA KK"
+export const CREDIT_CARD_BANKS = [
+  {
+    name: "Vakıfbank",
+    prefix: VB_KK_PREFIX,
+  },
+  {
+    name: "Albaraka",
+    prefix: ALBARAKA_KK_PREFIX,
+  },
+] as const
 /** "Ödendi" panelinde: hesaptan düşmeden sadece kartı kapat. */
 export const NO_ACCOUNT = "__yok__";
+
+
