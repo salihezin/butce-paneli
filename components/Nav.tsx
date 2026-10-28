@@ -9,7 +9,7 @@ const LINKS = [
   { href: "/islemler", label: "İşlemler" },
   { href: "/islem/yeni", label: "İşlem ekle" },
   { href: "/kaynak/yeni", label: "Kaynak ekle" },
-  { href: "/kredi-karti", label: "Vakıfbank kartı" },
+  { href: "/kredi-karti", label: "Kredi kartları" },
 ];
 
 export default function Nav() {
